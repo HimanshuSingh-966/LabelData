@@ -1,0 +1,19 @@
+# ==============================================================================
+# All Python Dependencies (Backend + Scripts)
+# ==============================================================================
+
+# --- FastAPI Backend ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+python-multipart>=0.0.9
+
+# --- Image Processing & Face Parsing (Dataset Pipeline) ---
+onnxruntime>=1.17.0
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# --- Shared (Backend + Scripts) ---
+b2sdk>=2.2.0
+requests>=2.31.0
+python-dotenv>=1.0.1

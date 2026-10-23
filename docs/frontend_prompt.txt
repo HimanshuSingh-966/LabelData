@@ -1,0 +1,28 @@
+Build a simple web app for manual image labeling. Deploy target: Vercel. It talks to an existing backend API (base URL set via environment variable NEXT_PUBLIC_API_URL or similar).
+
+PURPOSE
+A dental expert reviews smile photos one at a time, fetched from the backend, and rates 5 problems. No image is shown twice.
+
+FLOW
+1. On load, ask for the labeler's name once (simple text input), store it for the session.
+2. Call GET /next-image?labeler={name} on the backend to get the current image URL, filename, and progress (done/total).
+3. Show the image large, centered. Show progress as "Image {done+1} of {total}".
+4. Below the image, 5 rows, one per problem:
+   - Tooth Alignment / Crowding
+   - Gaps Between Teeth
+   - Tooth Discoloration
+   - Gum Line
+   - Smile Symmetry
+   Each row: 4 buttons — Mild, Moderate, Severe, None. Selected button clearly highlighted.
+5. A "Skip Image" button (unusable/blurry photo).
+6. A "Submit & Next" button — enabled only once all 5 rows have a selection, or Skip was chosen. On click, POST to /submit-label with the filename, labeler name, selections, and skipped flag, then immediately call /next-image again to load the next one.
+7. If the backend says all images are done, show a clear "All images labeled — thank you" screen with an "Export CSV" button that calls GET /export-csv and downloads the file.
+
+BEHAVIOR
+- No image should ever repeat in a session, since the backend tracks this — don't cache or go "back" past the current image.
+- Show a loading state while waiting for the backend.
+- If the backend call fails, show a clear retry button, don't let the page break silently.
+- Keep the design plain, large buttons, minimal text — this will be used by a non-technical reviewer doing many images in a row.
+
+OUTPUT
+A deployable Next.js (or plain React + Vite) app ready for Vercel, with a .env.example showing the required API URL variable.

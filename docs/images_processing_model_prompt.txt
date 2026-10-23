@@ -1,0 +1,41 @@
+Build a Python script that takes a smile photo and crops it to just the mouth area (lips + teeth), using the pretrained EasyPortrait face-parsing model. No training involved — this only runs inference on an existing model.
+
+GOAL
+Input: a folder of raw images.
+Output: for each image, a cropped version containing only the lips and teeth region, with some padding, saved to a separate output folder. Also output a small log/CSV noting which images FAILED (no teeth detected) so they can be excluded later.
+
+MODEL OPTIONS — try in this order
+1. First choice (fast path): use the unofficial ONNX export at huggingface.co/sadzip/EasyPortrait-ONNX (SegFormer-B0 face-parsing weights). Load with onnxruntime.
+2. If that fails or is unavailable, fall back to the official weights linked from https://github.com/hukenovs/easyportrait (BiSeNet-V2 face-parsing model, .pth format, hosted on their Sbercloud storage link in the README). This uses their MMSegmentation-based code — only implement this fallback if the ONNX path truly doesn't work, since official repo is older and more complex to set up.
+
+Clearly comment in the code which path is being used, and print a warning if using the unofficial ONNX weights, noting it's not an official release.
+
+CLASSES
+EasyPortrait face-parsing has 9 classes including background, skin, eyebrows, eyes, nose, and specifically:
+- Class 7: LIPS (upper + lower lip)
+- Class 8: TEETH
+Use only these two classes to determine the crop region. Ignore all other classes.
+
+PROCESSING STEPS (per image)
+1. Load image, resize to the model's expected input size (check the model's documented input shape — likely 384x384 or 512x512).
+2. Run inference to get the segmentation mask.
+3. Find all pixels labeled LIPS or TEETH.
+4. If no such pixels found (or below a small minimum pixel count threshold, e.g. fewer than 50 pixels) — mark this image as FAILED in the log, skip cropping, move to next image.
+5. Otherwise, compute the bounding box around these pixels, in the ORIGINAL image's coordinate space (not the resized one — scale the box back up).
+6. Add padding around the box: 15% of the box's width/height on each side, so the crop isn't too tight.
+7. Crop the original (not resized/compressed) image to this padded box.
+8. Save the cropped image to the output folder, keeping the original filename.
+
+OUTPUT
+- Cropped images folder.
+- A CSV log with columns: filename, status (success/failed), crop_box (x1,y1,x2,y2) if successful.
+- Print a summary at the end: total processed, total succeeded, total failed, with percentage.
+
+CODE STRUCTURE
+- A single Python script, runnable from command line: `python crop_mouths.py --input_folder PATH --output_folder PATH`
+- Clear function separation: load_model(), run_inference(image), get_crop_box(mask), crop_and_save(image, box, output_path).
+- Include a requirements.txt (onnxruntime, opencv-python or PIL, numpy).
+- Handle errors per-image gracefully (one bad/corrupt image file should not crash the whole batch — log it as failed and continue).
+
+NOTES FOR THE IMPLEMENTER
+- This script will be run once on a batch of ~3,000 dataset images before labeling, and later reused inside the live app backend to crop each real user's uploaded selfie the same way — so keep the crop function cleanly separated and reusable as an importable function, not just a command-line script.

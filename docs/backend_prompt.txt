@@ -1,0 +1,40 @@
+Build a FastAPI backend for an image labeling tool. Deploy target: Render.
+
+PURPOSE
+Serve smile photos one at a time from a private Backblaze B2 bucket to a frontend labeling app. Track which images are already labeled so no image is shown twice. Save labels.
+
+B2 ACCESS
+- Use B2 application key (key ID + application key) stored as environment variables, never hardcoded: B2_KEY_ID, B2_APP_KEY, B2_BUCKET_NAME.
+- The bucket is PRIVATE. Backend must generate short-lived signed/authorized URLs (B2 "download authorization" token) for one image at a time. Never expose the raw B2 key to the frontend.
+- Backend needs read-only access to the bucket.
+
+PROGRESS TRACKING
+- On startup, load a progress file named `labels.csv` from the same B2 bucket (create it if it doesn't exist) with columns: filename, crowding, gaps, discoloration, gum_line, symmetry, skipped, labeled_by, timestamp.
+- Keep an in-memory set of already-labeled filenames, refreshed from this CSV.
+- Maintain a separate file `image_list.json` in the bucket listing all filenames available for labeling (the subset to review). Backend reads this on startup.
+
+ENDPOINTS
+1. GET /next-image?labeler={name}
+   - Returns the next filename from image_list.json that is NOT in labels.csv, plus a signed temporary URL to view it, plus progress counts (e.g. {"done": 42, "total": 3000}).
+   - If none remain, return a clear "all done" response.
+
+2. POST /submit-label
+   - Body: { "filename": str, "labeler": str, "crowding": str, "gaps": str, "discoloration": str, "gum_line": str, "symmetry": str, "skipped": bool }
+   - Each severity field is one of: "mild", "moderate", "severe", "none" (ignored if skipped=true).
+   - Appends a row to labels.csv in the B2 bucket (download current CSV, append row, re-upload — keep this safe against two labelers submitting at the same time by re-reading the file right before writing).
+   - Returns success/failure.
+
+3. GET /progress
+   - Returns total images, number labeled, number skipped, number remaining.
+
+4. GET /export-csv
+   - Streams the current labels.csv file back as a downloadable file.
+
+ERROR HANDLING
+- If B2 is unreachable, return a clear 503 error, don't crash.
+- If submit-label is called with a filename already in labels.csv, reject with a clear message (prevents accidental double-labeling).
+
+CORS
+- Allow requests from the frontend's deployed Vercel domain (use an environment variable FRONTEND_URL for this, don't hardcode).
+
+Keep the code in a single main.py if reasonably sized, with clear function separation. Include a requirements.txt and a simple README with setup/env var instructions for Render deployment.
