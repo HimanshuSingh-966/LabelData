@@ -15,14 +15,23 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 # B2 SDK
+# B2 SDK
 try:
-    from b2sdk.v2 import B2Api, InMemoryAccountInfo, DownloadDestBytes
+    from b2sdk.v2 import B2Api, InMemoryAccountInfo
     from b2sdk.v2.exception import B2Error, FileNotPresent
+    try:
+        from b2sdk.download_dest import DownloadDestBytes
+    except ImportError:
+        try:
+            from b2sdk.v2 import DownloadDestBytes
+        except ImportError:
+            from b2sdk.v1 import DownloadDestBytes
     B2_AVAILABLE = True
 except ImportError:
     B2_AVAILABLE = False
     B2Error = Exception
     FileNotPresent = Exception
+    DownloadDestBytes = None
 
 # Try to load environment variables from local or root .env file
 try:
@@ -266,6 +275,21 @@ def health_check():
     }
 
 
+@app.get("/reload", tags=["Management"])
+def reload_from_storage():
+    """Manually reloads image_list.json and labels.csv from B2 storage."""
+    if not state.b2_ready:
+        init_b2()
+    else:
+        load_image_list()
+        load_or_create_labels_csv()
+    return {
+        "status": "reloaded",
+        "total_images": len(state.image_list),
+        "total_labeled": len(state.labeled_set)
+    }
+
+
 @app.get("/next-image", tags=["Labeling"])
 async def get_next_image(labeler: str = Query(..., description="Name of the labeler")):
     """
@@ -280,6 +304,10 @@ async def get_next_image(labeler: str = Query(..., description="Name of the labe
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=state.init_error or "Storage service (Backblaze B2) is unreachable."
             )
+
+    # Auto-reload if list is empty (e.g. images were uploaded after backend started)
+    if len(state.image_list) == 0:
+        load_image_list()
 
     async with reservation_lock:
         # Clean up any expired reservations first

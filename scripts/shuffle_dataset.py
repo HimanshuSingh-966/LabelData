@@ -57,8 +57,15 @@ except ImportError:
 
 # Try importing B2 SDK for direct cloud operations
 try:
-    from b2sdk.v2 import B2Api, InMemoryAccountInfo, DownloadDestBytes
+    from b2sdk.v2 import B2Api, InMemoryAccountInfo
     from b2sdk.v2.exception import FileNotPresent
+    try:
+        from b2sdk.download_dest import DownloadDestBytes
+    except ImportError:
+        try:
+            from b2sdk.v2 import DownloadDestBytes
+        except ImportError:
+            from b2sdk.v1 import DownloadDestBytes
     B2_AVAILABLE = True
 except ImportError:
     B2_AVAILABLE = False

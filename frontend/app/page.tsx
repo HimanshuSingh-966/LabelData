@@ -265,20 +265,31 @@ export default function LabelingApp() {
           </div>
         )}
 
-        {/* All Images Completed Screen */}
+        {/* All Images Completed OR Empty Bucket Screen */}
         {!loading && !errorMessage && isAllDone && (
           <div className="state-card">
-            <div className="state-icon success">
-              <CheckCircle2 size={36} />
+            <div className={`state-icon ${totalCount > 0 ? "success" : "warning"}`}>
+              {totalCount > 0 ? <CheckCircle2 size={36} /> : <AlertCircle size={36} />}
             </div>
-            <h3 className="state-title">All Images Labeled!</h3>
+            <h3 className="state-title">
+              {totalCount > 0 ? "All Images Labeled!" : "No Images Found in Bucket"}
+            </h3>
             <p className="state-desc">
-              All photos in this batch have been reviewed and logged. Thank you for your review.
+              {totalCount > 0
+                ? "All photos in this batch have been reviewed and logged. Thank you for your review."
+                : "The connected Backblaze B2 bucket has no images yet. Run the dataset upload script to stage and upload your batch."}
             </p>
-            <button className="submit-btn" style={{ maxWidth: 260, margin: "0 auto" }} onClick={handleExportCsv}>
-              <Download size={18} />
-              Export Labels (CSV)
-            </button>
+            {totalCount > 0 ? (
+              <button className="submit-btn" style={{ maxWidth: 260, margin: "0 auto" }} onClick={handleExportCsv}>
+                <Download size={18} />
+                Export Labels (CSV)
+              </button>
+            ) : (
+              <button className="submit-btn" style={{ maxWidth: 220, margin: "0 auto" }} onClick={() => fetchNextImage(labeler)}>
+                <RefreshCw size={18} />
+                Check Again
+              </button>
+            )}
           </div>
         )}
 

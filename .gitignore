@@ -55,6 +55,7 @@ data/raw/*
 !data/raw/.gitkeep
 data/pulled_batch/*
 !data/pulled_batch/.gitkeep
+data/test_output/*
 data/crop_log.csv
 
 # Pretrained Model Weights (large binary files)
